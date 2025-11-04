@@ -93,6 +93,18 @@
           "timeout": "5s"
         }
       ]
+    },
+    {
+      "endpoint": "/store-manager-api/orders/{order_id}",
+      "method": "PUT",
+      "input_headers": ["*"],
+      "backend": [
+        {
+          "url_pattern": "/orders/{order_id}",
+          "host": ["http://store_manager:5000"],
+          "timeout": "5s"
+        }
+      ]
     }
   ]
 }

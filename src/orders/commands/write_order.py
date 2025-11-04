@@ -83,24 +83,67 @@ def add_order(user_id: int, items: list):
     finally:
         session.close()
 
-def modify_order(order_id: int, is_paid: bool):
+def modify_order(order_id: int, is_paid: bool = None, user_id: int = None, total_amount: float = None, items: list = None):
     session = get_sqlalchemy_session()
+    
     try:
         order = session.query(Order).filter(Order.id == order_id).first()
 
-        if order is not None and is_paid is not None:
+        if order is None:
+            return False
+
+        # Update order fields if provided
+        if is_paid is not None:
             order.is_paid = is_paid
+        if user_id is not None:
+            order.user_id = user_id
+        if total_amount is not None:
+            order.total_amount = total_amount
+
+        # If items are provided, update order items
+        if items is not None:
+            # Remove existing order items
+            existing_items = session.query(OrderItem).filter(OrderItem.order_id == order_id).all()
+            for item in existing_items:
+                session.delete(item)
+            
+            # Add new order items
+            product_ids = [item['product_id'] for item in items]
+            products_query = session.query(Product).filter(Product.id.in_(product_ids)).all()
+            price_map = {product.id: product.price for product in products_query}
+            
+            new_total_amount = 0
+            for item in items:
+                pid = item["product_id"]
+                qty = item["quantity"]
+                
+                if pid not in price_map:
+                    raise ValueError(f"Product ID {pid} not found in database.")
+                
+                unit_price = price_map[pid]
+                new_total_amount += unit_price * qty
+                
+                order_item = OrderItem(
+                    order_id=order_id,
+                    product_id=pid,
+                    quantity=qty,
+                    unit_price=unit_price
+                )
+                session.add(order_item)
+            
+            # Update total amount if items were modified
+            order.total_amount = new_total_amount
 
         session.commit()
         session.refresh(order)
         return True
     except SQLAlchemyError as e:
         session.rollback()
-        print(e)
+        logger.error(f"Database error: {e}")
         return False
     except Exception as e:
         session.rollback()
-        print(e)
+        logger.error(f"General error: {e}")
         return False
     finally:
         session.close()

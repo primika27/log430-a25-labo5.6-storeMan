@@ -7,7 +7,7 @@ Auteurs : Gabriel C. Ullmann, Fabio Petrillo, 2025
 from db import get_redis_conn, get_sqlalchemy_session
 from flask import jsonify
 from stocks.queries.read_stock import get_stock_by_id, get_stock_for_all_products
-from stocks.commands.write_stock import populate_redis_from_mysql, set_stock_for_product, update_stock_mysql
+from stocks.commands.write_stock import populate_redis_from_mysql, set_stock_for_product, update_stock_mysql, update_stock_redis
 
 def set_stock(request):
     """Set stock quantities of a product"""
@@ -28,6 +28,7 @@ def update_stock(request):
     try:
         session = get_sqlalchemy_session()
         result = update_stock_mysql(session, items, operation)
+        update_stock_redis(items, operation)
         return jsonify({'result': result}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500

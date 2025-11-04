@@ -163,10 +163,11 @@ def graphql_supplier():
     })
 
 # Integration with payment service
-@app.put('/orders')
-def put_orders():
-    """Update one or more order fields"""
-    return update_order(request)
+@app.put('/orders/<int:order_id>')
+def put_orders_id(order_id):
+    """Update order with a given order_id"""
+    with tracer.start_as_current_span("put_orders_id"):
+        return update_order(request, order_id)
 
 # Start Flask app
 if __name__ == '__main__':

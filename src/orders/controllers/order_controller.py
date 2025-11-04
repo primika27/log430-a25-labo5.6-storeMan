@@ -23,27 +23,46 @@ def create_order(request):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     
-def update_order(request):
-    """Update order, use WriteOrder model"""
+def update_order(request, order_id):
+    """Update order with given order_id, use WriteOrder model"""
     payload = request.get_json() or {}
-    order_id = payload.get('order_id')
     is_paid = payload.get('is_paid')
-    logger.debug(f"Mettre à jour la commande {order_id}, status={is_paid}")
+    user_id = payload.get('user_id')
+    total_amount = payload.get('total_amount')
+    items = payload.get('items')
+    
+    logger.debug(f"Mettre à jour la commande {order_id}")
 
     try:
         # update MySQL
-        status = modify_order(order_id, is_paid=is_paid)
+        status = modify_order(order_id, is_paid=is_paid, user_id=user_id, total_amount=total_amount, items=items)
+        
+        if not status:
+            return jsonify({'error': 'Order not found or update failed'}), 404
         
         # update Redis
         r = get_redis_conn()
         order = r.hgetall(f"order:{order_id}")
-        order['is_paid'] = str(is_paid)
-        r.hset(f"order:{order_id}", mapping=order)
+        
+        if order:
+            # Update fields in Redis if they were provided
+            if is_paid is not None:
+                order['is_paid'] = str(is_paid)
+            if user_id is not None:
+                order['user_id'] = str(user_id)
+            if total_amount is not None:
+                order['total_amount'] = str(total_amount)
+            if items is not None:
+                import json
+                order['items'] = json.dumps(items) if not isinstance(items, str) else items
+            
+            r.hset(f"order:{order_id}", mapping=order)
 
         # response
-        logger.debug("Statut actuel", status)
-        return jsonify({'updated': status}), 200
+        logger.debug(f"Commande {order_id} mise à jour avec succès")
+        return jsonify({'updated': True, 'order_id': order_id}), 200
     except Exception as e:
+        logger.error(f"Erreur lors de la mise à jour de la commande {order_id}: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 def remove_order(order_id):
