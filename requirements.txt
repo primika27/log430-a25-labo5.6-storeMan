@@ -9,3 +9,9 @@ redis>=4.0
 graphene>=3.4
 requests>=2.32
 locust
+
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-exporter-otlp-proto-grpc
+opentelemetry-instrumentation-flask
+opentelemetry-instrumentation-requests
