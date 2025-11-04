@@ -1,0 +1,84 @@
+services:
+  store_manager:
+    build: .
+    container_name: store_manager 
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - .:/app
+    ports:
+      - "5000:5000"
+    networks:
+      - labo05-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  locust:
+     image: locustio/locust
+     ports:
+       - "8089:8089"
+     volumes:
+       - ./locustfiles:/mnt/locust
+     command: -f /mnt/locust/locustfile.py --host=http://api-gateway:8080
+     depends_on:
+      - store_manager
+     networks:
+       - labo05-network
+
+  mysql:
+    image: mysql:8.4.7
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: labo05_db
+      MYSQL_USER: labo05
+      MYSQL_PASSWORD: labo05
+    networks:
+      - labo05-network
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./db-init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -proot"]
+      interval: 1m
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    networks:
+      - labo05-network
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 1m
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
+  krakend:
+    image: devopsfaith/krakend:2.7
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./config/krakend.json:/etc/krakend/krakend.json
+    networks:
+      - labo05-network
+    depends_on:
+      - store_manager
+
+networks:
+  labo05-network:
+    external: true
+
+volumes:
+  mysql_data:
