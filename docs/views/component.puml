@@ -1,0 +1,37 @@
+@startuml
+package View {
+    [@app.post('/users')] 
+}
+
+package Controller {
+    [UserController] 
+}
+
+package WriteModel {
+    [WriteUser] 
+}
+
+package Producer {
+    [UserEventProducer] 
+    [KafkaProducer] 
+}
+
+package Model {
+    [User] 
+}
+
+package Coolriel {
+    [coolriel.py] 
+}
+
+
+[@app.post('/users')] --> [UserController] : Démander la création/suppression
+[UserController] --> [WriteUser] : Démander la création/suppression
+[WriteUser] --> [UserController] : Notifier le Controller
+[UserController] --> [@app.post('/users')] : Mettre à jour la View 
+[WriteUser] --> [User] : Créer/supprimer un utilisateur 
+[User] --> [WriteUser] : Notifier le write model
+[WriteUser] --> [UserEventProducer] : Envoyer un courriel de notification
+[UserEventProducer] --> [KafkaProducer] 
+[KafkaProducer] --> [coolriel.py] : Voir log430-labo7-emails (Coolriel)
+@enduml
